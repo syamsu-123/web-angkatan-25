@@ -1,0 +1,85 @@
+---
+import '../styles/global.css';
+import PaperPlaneAnimation from '../components/PaperPlaneAnimation.jsx';
+const { title = 'SMK Al-Ittihad', description = 'Web angkatan SMK Al-Ittihad, Karangtengah, Cianjur' } = Astro.props;
+---
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Italiana&family=Cormorant+Garamond:wght@400;600&family=Open+Sans:wght@400;700&display=swap" rel="stylesheet" />
+    <style is:global>
+      /* Efek halaman seperti kertas ketarik saat scroll */
+      .page{transform-origin:50% 50%;will-change:transform;position:relative;z-index:1}
+      .page.pull{box-shadow:0 24px 60px rgba(0,0,0,.35)}
+      .page::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .35s ease;
+        background:
+          linear-gradient(180deg,rgba(0,0,0,.28),transparent 9%) top/100% 100% no-repeat,
+          linear-gradient(0deg,rgba(0,0,0,.28),transparent 9%) bottom/100% 100% no-repeat}
+      .page.pull::after{opacity:1}
+      .crease{position:fixed;left:0;right:0;height:0;pointer-events:none;z-index:55;opacity:0;
+        border-top:1px dashed rgba(255,255,255,.5);
+        filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));transition:opacity .3s ease}
+      .crease.show{opacity:.8}
+      @media (prefers-reduced-motion:reduce){.page,.page::after,.crease{transform:none!important;opacity:1;transition:none}}
+    </style>
+  </head>
+  <body>
+    <div class="crease" aria-hidden="true"></div>
+    <main class="page">
+      <slot />
+    </main>
+    <PaperPlaneAnimation client:load />
+    <script>
+      // Animasi fade-in saat section masuk layar
+      const io = new IntersectionObserver((es) => es.forEach((e) => {
+        if (e.isIntersecting) { e.target.classList.add('show'); io.unobserve(e.target); }
+      }), { threshold: 0.15 });
+      document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // Efek halaman ketarik seperti kertas saat scroll
+      const page = document.querySelector('.page') as HTMLElement | null;
+      const crease = document.querySelector('.crease') as HTMLElement | null;
+      if (page && crease && !reduce) {
+        let lastY = window.scrollY, vel = 0, smooth = 0, rafP = 0;
+        const loop = () => {
+          smooth += (vel - smooth) * 0.15;
+          const s = Math.max(-1, Math.min(1, smooth / 40));
+          const stretch = Math.abs(s) * 0.06;
+          const skew = s * 1.6;
+          page.style.transform = `scaleY(${1 + stretch}) translateY(${s * -8}px) skewY(${skew * 0.4}deg)`;
+          if (Math.abs(s) > 0.06) {
+            page.classList.add('pull');
+            crease.classList.add('show');
+            crease.style.top = s > 0 ? '8vh' : '88vh';
+          } else {
+            page.classList.remove('pull');
+            crease.classList.remove('show');
+          }
+          vel *= 0.88;
+          if (Math.abs(vel) > 0.4 || Math.abs(smooth) > 0.4) { rafP = requestAnimationFrame(loop); }
+          else {
+            smooth = 0; vel = 0; rafP = 0;
+            page.style.transform = '';
+            page.classList.remove('pull');
+            crease.classList.remove('show');
+          }
+        };
+        const onScroll = () => {
+          const y = window.scrollY;
+          vel += (y - lastY);
+          lastY = y;
+          if (!rafP) rafP = requestAnimationFrame(loop);
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+      }
+    </script>
+  </body>
+</html>
