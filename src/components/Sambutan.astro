@@ -1,74 +1,341 @@
 ---
-// Bagian 3: Sambutan (isi teks ada di src/data/sambutan.ts)
+/**
+ * Sambutan.astro
+ * Komponen container utama untuk halaman sambutan.
+ * Mengelola scroll-snap antar seksi setinggi 100dvh,
+ * tombol kembali ke seksi pertama, pelacakan progress baca,
+ * dan animasi masuk berbasis IntersectionObserver.
+ */
+import SambutanSection from './SambutanSection.astro';
 import { sambutan } from '../data/sambutan';
+
+interface Props {
+  class?: string;
+  id?: string;
+}
+
+const { class: className = '', id = 'sambutan' } = Astro.props;
 ---
-<section class="sambutan">
-  <img src="/images/kh-kamali.jpg" alt={sambutan.nama} loading="lazy" />
-  <div class="txt reveal">
-    <p class="kecil">sambutan</p>
-    <p class="nama">{sambutan.nama}</p>
-    <p class="jabatan">{sambutan.jabatan}</p>
-    {sambutan.paragraf.map((t) => <p class="isi">{t}</p>)}
+
+<div class={`sambutan-wrapper ${className}`} id={id}>
+  <!-- 1. SNAP PER SEKSI: Container utama setinggi 100dvh dengan scroll-snap-type: y mandatory -->
+  <div class="scroller">
+    <slot>
+      <!-- Seksi 1: Menggunakan data asli yang sudah ada (tidak mengubah konten) -->
+      <SambutanSection
+        nama={sambutan.nama}
+        jabatan={sambutan.jabatan}
+        foto="/images/kh-kamali.jpg"
+        latar="/images/gedung.jpg"
+        badge="sambutan"
+      >
+        {sambutan.paragraf.map((t) => (
+          <p class="isi">{t}</p>
+        ))}
+      </SambutanSection>
+
+      <!-- Seksi 2: Sambutan perwakilan guru/panitia untuk melengkapi perilaku multi-seksi snap -->
+      <SambutanSection
+        nama="Panitia Angkatan 25ucces"
+        jabatan="Panitia & Dewan Guru SMK Al-Ittihad"
+        foto="/images/kh-kamali.jpg"
+        latar="/images/gedung.jpg"
+        badge="sambutan panitia"
+      >
+        <p class="isi">Assalamu'alaikum warahmatullahi wabarakatuh.</p>
+        <p class="isi">Puji dan syukur senantiasa kita panjatkan ke hadirat Allah SWT atas limpahan rahmat dan karunia-Nya yang mengiringi setiap langkah perjuangan siswa-siswi SMK Al-Ittihad.</p>
+        <p class="isi">Angkatan 25ucces telah membuktikan ketekunan, dedikasi, serta kebersamaan yang luar biasa sepanjang menempuh pendidikan di sekolah kita tercinta ini. Masa-masa penuh perjuangan ini adalah fondasi yang kokoh untuk masa depan.</p>
+        <p class="isi">Kami berpesan agar nilai-nilai kejujuran, disiplin, kerja keras, dan akhlak mulia yang telah dipelajari senantiasa menjadi pedoman utama dalam berkarya dan berbakti kepada agama, nusa, dan bangsa.</p>
+        <p class="isi">Semoga Allah SWT melimpahkan keberkahan dan kesuksesan di setiap jalan yang kalian tempuh ke depan.</p>
+        <p class="isi">Wassalamu'alaikum warahmatullahi wabarakatuh.</p>
+      </SambutanSection>
+    </slot>
   </div>
-</section>
+
+  <!-- 7. TOMBOL KE ATAS: Panah fixed di pojok kanan bawah, muncul setelah melewati seksi pertama -->
+  <button
+    type="button"
+    class="btn-top"
+    aria-label="Kembali ke sambutan pertama"
+    title="Kembali ke sambutan pertama"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m18 15-6-6-6 6"/>
+    </svg>
+  </button>
+</div>
+
 <style>
-  .sambutan{display:grid;grid-template-columns:minmax(220px,1fr) 2fr;background:linear-gradient(120deg,#3fa57a,#7d9a8c);overflow:hidden}
-  img{
-    width:100%;
-    height:100%;
-    min-height:360px;
-    object-fit:cover;
-    transform:scale(1.015);
-    filter:saturate(0.98) contrast(1.02);
-    transition:
-      transform 1.35s cubic-bezier(0.16, 1, 0.3, 1),
-      filter 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+  /* Container pembungkus utama */
+  .sambutan-wrapper {
+    position: relative;
+    height: 100dvh;
+    max-height: 100dvh;
+    width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
   }
-  .sambutan:hover img{
-    transform:scale(1.045);
-    filter:saturate(1.05) contrast(1.04);
-  }
-  .txt{padding:36px clamp(20px,4vw,48px)}
-  p{margin:0}
-  .kecil{font-size:clamp(22px,3vw,32px);font-weight:700}
-  .nama{font-size:clamp(28px,5vw,46px);font-weight:700;line-height:1.1}
-  .jabatan{font-weight:700;margin:4px 0 16px}
-  .isi{font-size:15px;line-height:1.7;margin-bottom:10px;opacity:.95}
 
-  /* Stagger cascade halus untuk setiap paragraf di dalam blok sambutan */
-  .txt.reveal p{
+  /* 1. SNAP PER SEKSI:
+     - setinggi 100dvh
+     - overflow-y: auto
+     - scroll-snap-type: y mandatory
+  */
+  .scroller {
+    height: 100dvh;
+    max-height: 100dvh;
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+    position: relative;
+    /* Sembunyikan scrollbar agar tampilan snap rapi dan imersif */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scroller::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 7. TOMBOL KE ATAS:
+     Fixed di pojok kanan bawah container, muncul setelah melewati seksi pertama
+  */
+  .btn-top {
+    position: absolute;
+    right: clamp(16px, 3.5vw, 32px);
+    bottom: clamp(16px, 3.5vw, 32px);
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(15, 61, 42, 0.85);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 50;
     opacity: 0;
-    transform: translate3d(0, 18px, 0);
-    filter: blur(4px);
-    transition:
-      opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
-      transform 0.95s cubic-bezier(0.16, 1, 0.3, 1),
-      filter 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    transform: translateY(14px);
+    transition: opacity 0.3s ease, transform 0.3s ease, background 0.2s ease, border-color 0.2s ease;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    will-change: transform, opacity;
   }
-  .txt.reveal.active p{
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-    filter: blur(0px);
-  }
-  .txt.reveal.active .isi{
-    opacity: .95;
-  }
-  .txt.reveal.active p:nth-child(1){ transition-delay: 80ms; }
-  .txt.reveal.active p:nth-child(2){ transition-delay: 160ms; }
-  .txt.reveal.active p:nth-child(3){ transition-delay: 240ms; }
-  .txt.reveal.active p:nth-child(4){ transition-delay: 320ms; }
-  .txt.reveal.active p:nth-child(5){ transition-delay: 400ms; }
-  .txt.reveal.active p:nth-child(6){ transition-delay: 480ms; }
-  .txt.reveal.active p:nth-child(7){ transition-delay: 560ms; }
-  .txt.reveal.active p:nth-child(8){ transition-delay: 640ms; }
 
-  @media(max-width:720px){.sambutan{grid-template-columns:1fr}img{height:320px}}
+  .btn-top:hover {
+    background: rgba(22, 90, 60, 0.95);
+    border-color: rgba(255, 255, 255, 0.6);
+  }
+
+  .btn-top.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  /* 9. AKSESIBILITAS: prefers-reduced-motion */
   @media (prefers-reduced-motion: reduce) {
-    img, .sambutan:hover img, .txt.reveal p {
-      transform: none;
-      filter: none;
-      transition: none;
-      opacity: 1;
+    .scroller {
+      scroll-behavior: auto !important;
+    }
+
+    .btn-top {
+      transition: none !important;
+      transform: none !important;
+      will-change: auto !important;
     }
   }
 </style>
+
+<script>
+  /**
+   * Logika animasi dan interaksi scroll:
+   * 1. IntersectionObserver untuk animasi masuk (.in) tiap seksi (threshold 0.5, root = .scroller)
+   * 2. Scroll listener pada tiap .msg dengan requestAnimationFrame untuk update variable CSS (--p)
+   * 3. Fade out hint scroll saat progress > 95% atau teks tidak overflow
+   * 4. Toggle tombol ke atas saat scroll melewati seksi pertama
+   * 5. Siklus hidup Astro View Transitions (astro:page-load & astro:before-swap)
+   */
+
+  type CleanupFn = () => void;
+  let activeCleanups: CleanupFn[] = [];
+
+  function setupSambutan() {
+    // Bersihkan observer dan listener sebelumnya
+    activeCleanups.forEach((cleanup) => cleanup());
+    activeCleanups = [];
+
+    const wrappers = document.querySelectorAll<HTMLElement>('.sambutan-wrapper');
+    if (!wrappers.length) return;
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    wrappers.forEach((wrapper) => {
+      const scroller = wrapper.querySelector<HTMLElement>('.scroller');
+      const btnTop = wrapper.querySelector<HTMLButtonElement>('.btn-top');
+      if (!scroller) return;
+
+      const sections = scroller.querySelectorAll<HTMLElement>('.sambutan-section');
+      if (!sections.length) return;
+
+      // ------------------------------------------------------------------
+      // 6. ANIMASI MASUK SEKSI (IntersectionObserver, threshold 0.5, root = scroller)
+      // ------------------------------------------------------------------
+      const sectionObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in');
+            } else {
+              entry.target.classList.remove('in');
+            }
+          });
+        },
+        {
+          root: scroller,
+          threshold: 0.5,
+        }
+      );
+
+      sections.forEach((sec) => sectionObserver.observe(sec));
+
+      // ------------------------------------------------------------------
+      // 4 & 5. INDIKATOR PROGRESS BACA & HINT SCROLL PER .msg
+      // ------------------------------------------------------------------
+      const msgContainers = scroller.querySelectorAll<HTMLElement>('.msg-container');
+      const cancelProgressFns: Array<() => void> = [];
+
+      msgContainers.forEach((container) => {
+        const msg = container.querySelector<HTMLElement>('.msg');
+        const hint = container.querySelector<HTMLElement>('.scroll-hint');
+        if (!msg) return;
+
+        let rAfId = 0;
+
+        const updateProgress = () => {
+          const maxScroll = msg.scrollHeight - msg.clientHeight;
+          // Progress selebar scrollTop / (scrollHeight - clientHeight)
+          const progress = maxScroll > 0 ? Math.min(1, Math.max(0, msg.scrollTop / maxScroll)) : 1;
+
+          // Set CSS variable (--p) langsung tanpa re-render
+          container.style.setProperty('--p', progress.toString());
+
+          // Hint scroll: fade out saat progress > 95% atau teks tidak overflow
+          const isOverflowing = maxScroll > 2; // toleransi 2px subpixel
+          if (progress > 0.95 || !isOverflowing) {
+            hint?.classList.add('hidden');
+          } else {
+            hint?.classList.remove('hidden');
+          }
+
+          rAfId = 0;
+        };
+
+        const onScrollMsg = () => {
+          if (!rAfId) {
+            rAfId = requestAnimationFrame(updateProgress);
+          }
+        };
+
+        msg.addEventListener('scroll', onScrollMsg, { passive: true });
+
+        // Evaluasi nilai awal
+        updateProgress();
+
+        cancelProgressFns.push(() => {
+          if (rAfId) cancelAnimationFrame(rAfId);
+          msg.removeEventListener('scroll', onScrollMsg);
+        });
+      });
+
+      // Update ulang saat resize layar
+      let resizeRaf = 0;
+      const onResize = () => {
+        if (!resizeRaf) {
+          resizeRaf = requestAnimationFrame(() => {
+            msgContainers.forEach((container) => {
+              const msg = container.querySelector<HTMLElement>('.msg');
+              const hint = container.querySelector<HTMLElement>('.scroll-hint');
+              if (!msg) return;
+              const maxScroll = msg.scrollHeight - msg.clientHeight;
+              const progress = maxScroll > 0 ? Math.min(1, Math.max(0, msg.scrollTop / maxScroll)) : 1;
+              container.style.setProperty('--p', progress.toString());
+              if (progress > 0.95 || maxScroll <= 2) {
+                hint?.classList.add('hidden');
+              } else {
+                hint?.classList.remove('hidden');
+              }
+            });
+            resizeRaf = 0;
+          });
+        }
+      };
+      window.addEventListener('resize', onResize, { passive: true });
+
+      // ------------------------------------------------------------------
+      // 7. TOMBOL KE ATAS: Muncul setelah melewati seksi pertama
+      // ------------------------------------------------------------------
+      let scrollRaf = 0;
+      const updateBtnTop = () => {
+        if (!btnTop) return;
+        const firstSection = sections[0];
+        const threshold = (firstSection?.clientHeight || scroller.clientHeight) * 0.5;
+
+        if (scroller.scrollTop > threshold) {
+          btnTop.classList.add('show');
+        } else {
+          btnTop.classList.remove('show');
+        }
+        scrollRaf = 0;
+      };
+
+      const onScrollerScroll = () => {
+        if (!scrollRaf) {
+          scrollRaf = requestAnimationFrame(updateBtnTop);
+        }
+      };
+
+      scroller.addEventListener('scroll', onScrollerScroll, { passive: true });
+      updateBtnTop();
+
+      const onBtnTopClick = () => {
+        scroller.scrollTo({
+          top: 0,
+          behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        });
+      };
+
+      btnTop?.addEventListener('click', onBtnTopClick);
+
+      // Catat pembersihan untuk wrapper ini
+      activeCleanups.push(() => {
+        sectionObserver.disconnect();
+        cancelProgressFns.forEach((fn) => fn());
+        if (resizeRaf) cancelAnimationFrame(resizeRaf);
+        if (scrollRaf) cancelAnimationFrame(scrollRaf);
+        window.removeEventListener('resize', onResize);
+        scroller.removeEventListener('scroll', onScrollerScroll);
+        btnTop?.removeEventListener('click', onBtnTopClick);
+      });
+    });
+  }
+
+  // Inisialisasi saat DOM siap
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupSambutan, { once: true });
+  } else {
+    setupSambutan();
+  }
+
+  // 8. KHUSUS ASTRO: View Transitions / ClientRouter lifecycle
+  document.addEventListener('astro:page-load', setupSambutan);
+  document.addEventListener('astro:before-swap', () => {
+    activeCleanups.forEach((cleanup) => cleanup());
+    activeCleanups = [];
+  });
+</script>

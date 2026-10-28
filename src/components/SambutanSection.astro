@@ -1,0 +1,424 @@
+---
+/**
+ * SambutanSection.astro
+ * Komponen per seksi sambutan (1 orang per seksi).
+ * Memiliki layout fixed untuk potret cutout, latar, logo, nama, & jabatan,
+ * serta area teks .msg yang menempel di bawah dan scroll sendiri.
+ */
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  nama: string;
+  jabatan: string;
+  foto: string | ImageMetadata;
+  latar?: string | ImageMetadata;
+  logo?: string | ImageMetadata;
+  badge?: string;
+  class?: string;
+}
+
+const {
+  nama,
+  jabatan,
+  foto,
+  latar,
+  logo = '/images/logo.png',
+  badge = 'sambutan',
+  class: className = '',
+} = Astro.props;
+---
+
+<section class={`sambutan-section ${className}`}>
+  <!-- 3. Foto latar dengan fade gradient di bagian bawah -->
+  {latar && (
+    <div class="latar-wrap" aria-hidden="true">
+      {typeof latar === 'string' ? (
+        <Image
+          src={latar}
+          alt=""
+          width={1920}
+          height={1080}
+          class="latar-img"
+          loading="lazy"
+        />
+      ) : (
+        <Image
+          src={latar}
+          alt=""
+          class="latar-img"
+          loading="lazy"
+        />
+      )}
+    </div>
+  )}
+
+  <div class="section-content">
+    <!-- Header tetap: Logo, Nama, Jabatan (slide-up + stagger 100ms) -->
+    <header class="section-header">
+      {logo && (
+        <div class="logo-wrap">
+          {typeof logo === 'string' ? (
+            <Image
+              src={logo}
+              alt="Logo"
+              width={64}
+              height={64}
+              class="logo-img"
+            />
+          ) : (
+            <Image
+              src={logo}
+              alt="Logo"
+              class="logo-img"
+            />
+          )}
+        </div>
+      )}
+      <p class="kecil">{badge}</p>
+      <h2 class="nama">{nama}</h2>
+      <p class="jabatan">{jabatan}</p>
+    </header>
+
+    <!-- 6. Potret cutout dengan animasi masuk translateY(40px) + opacity -->
+    <div class="potret-wrap" aria-hidden="true">
+      {typeof foto === 'string' ? (
+        <Image
+          src={foto}
+          alt={nama}
+          width={640}
+          height={800}
+          class="potret"
+          loading="lazy"
+        />
+      ) : (
+        <Image
+          src={foto}
+          alt={nama}
+          class="potret"
+          loading="lazy"
+        />
+      )}
+    </div>
+
+    <!-- Area pesan sambutan yang menempel di bawah -->
+    <div class="msg-container">
+      <!-- 4. Indikator progress baca: garis tipis dengan fill selebar --p -->
+      <div class="progress-track" aria-hidden="true">
+        <div class="progress-fill"></div>
+      </div>
+
+      <!-- 2 & 3. Kotak teks sambutan (.msg): scroll sendiri, fade atas & bawah -->
+      <div class="msg">
+        <div class="msg-inner">
+          <slot />
+        </div>
+      </div>
+
+      <!-- 5. Hint scroll: teks & panah di bawah .msg, fade out saat progress > 95% -->
+      <div class="scroll-hint" aria-hidden="true">
+        <span>Scroll untuk baca lebih lanjut</span>
+        <svg class="hint-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 5v14M19 12l-7 7-7-7"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  /* 1. SNAP PER SEKSI: setinggi 100dvh, snap align start, stop always */
+  .sambutan-section {
+    position: relative;
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    overflow: hidden;
+    background: linear-gradient(120deg, #3fa57a, #7d9a8c);
+    color: #fff;
+    box-sizing: border-box;
+  }
+
+  /* 3. FADE LATAR: mask-image linear-gradient(to bottom, #000 40%, transparent 100%) */
+  .latar-wrap {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+  }
+
+  .latar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.28;
+    -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
+  }
+
+  .section-content {
+    position: relative;
+    z-index: 2;
+    height: 100dvh;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* 2. LOGO, NAMA, DAN JABATAN TETAP DI POSISINYA */
+  .section-header {
+    position: absolute;
+    top: clamp(20px, 4dvh, 48px);
+    right: clamp(20px, 6vw, 80px);
+    width: min(620px, 50vw);
+    z-index: 4;
+  }
+
+  .logo-wrap {
+    margin-bottom: 8px;
+  }
+
+  .logo-img {
+    width: auto;
+    height: clamp(36px, 5vw, 52px);
+    object-fit: contain;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25));
+  }
+
+  .kecil {
+    margin: 0;
+    font-size: clamp(18px, 2.4vw, 28px);
+    font-weight: 700;
+    text-transform: lowercase;
+    opacity: 0.9;
+    letter-spacing: 0.5px;
+  }
+
+  /* 6. ANIMASI MASUK: Nama dan Jabatan fade + slide-up stagger 100ms */
+  .nama {
+    margin: 4px 0 0;
+    font-size: clamp(26px, 4vw, 44px);
+    font-weight: 700;
+    line-height: 1.15;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1) 0ms,
+                opacity 600ms cubic-bezier(0.22, 1, 0.36, 1) 0ms;
+    will-change: transform, opacity;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  }
+
+  .jabatan {
+    margin: 4px 0 0;
+    font-size: clamp(14px, 1.6vw, 17px);
+    font-weight: 700;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1) 100ms,
+                opacity 600ms cubic-bezier(0.22, 1, 0.36, 1) 100ms;
+    will-change: transform, opacity;
+  }
+
+  /* 6. ANIMASI MASUK: Potret cutout translateY(40px) + opacity 0 -> normal, 700ms */
+  .potret-wrap {
+    position: absolute;
+    bottom: 0;
+    left: clamp(20px, 8vw, 100px);
+    height: 85dvh;
+    display: flex;
+    align-items: flex-end;
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  .potret {
+    height: 100%;
+    width: auto;
+    max-height: 85dvh;
+    max-width: min(45vw, 500px);
+    object-fit: contain;
+    object-position: bottom;
+    opacity: 0;
+    transform: translateY(40px);
+    transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 700ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform, opacity;
+    filter: drop-shadow(0 16px 32px rgba(0, 0, 0, 0.35));
+  }
+
+  /* State aktif saat seksi masuk layar (IntersectionObserver menambah class .in) */
+  .sambutan-section.in .potret {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .sambutan-section.in .nama {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .sambutan-section.in .jabatan {
+    transform: translateY(0);
+    opacity: 0.95;
+  }
+
+  /* 2. AREA PESAN SAMBUTAN MENEMPEL DI BAWAH */
+  .msg-container {
+    position: absolute;
+    bottom: clamp(16px, 3dvh, 32px);
+    right: clamp(20px, 6vw, 80px);
+    width: min(620px, 50vw);
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 4. INDIKATOR PROGRESS BACA: garis tipis di atas .msg */
+  .progress-track {
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+
+  .progress-fill {
+    width: 100%;
+    height: 100%;
+    background: var(--g1, #7fd68e);
+    transform-origin: left center;
+    transform: scaleX(var(--p, 0));
+    will-change: transform;
+  }
+
+  /* 2 & 3. KOTAK TEKS SAMBUTAN (.msg)
+     - overflow-y: auto
+     - tinggi sekitar 40-45dvh
+     - overscroll-behavior-y: auto (JANGAN contain) agar snap ke seksi berikutnya saat mentok
+     - mask-image linear-gradient atas & bawah
+  */
+  .msg {
+    height: 42dvh;
+    max-height: 45dvh;
+    overflow-y: auto;
+    overscroll-behavior-y: auto;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 88%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 88%, transparent 100%);
+    padding: 24px 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+  }
+
+  .msg-inner {
+    padding-right: 6px;
+  }
+
+  /* Styling paragraf isi via slot */
+  .msg :global(p) {
+    font-size: 15px;
+    line-height: 1.7;
+    margin-top: 0;
+    margin-bottom: 12px;
+    opacity: 0.95;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .msg :global(p:last-child) {
+    margin-bottom: 0;
+  }
+
+  /* 5. HINT SCROLL: teks kecil + panah di bawah .msg */
+  .scroll-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.75);
+    padding-top: 8px;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .scroll-hint.hidden {
+    opacity: 0;
+  }
+
+  .hint-arrow {
+    animation: hint-bounce 1.6s infinite ease-in-out;
+  }
+
+  @keyframes hint-bounce {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(3px);
+    }
+  }
+
+  /* RESPONSIF: Layar kecil / Mobile */
+  @media (max-width: 768px) {
+    .section-header {
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      width: auto;
+    }
+
+    .potret-wrap {
+      left: auto;
+      right: 12px;
+      bottom: 43dvh;
+      height: 42dvh;
+      max-width: 58vw;
+      opacity: 0.55;
+    }
+
+    .potret {
+      max-height: 42dvh;
+      max-width: 100%;
+    }
+
+    .msg-container {
+      bottom: 10px;
+      left: 16px;
+      right: 16px;
+      width: auto;
+    }
+
+    .msg {
+      height: 40dvh;
+      max-height: 43dvh;
+      padding: 18px 4px;
+    }
+  }
+
+  /* 9. AKSESIBILITAS: prefers-reduced-motion */
+  @media (prefers-reduced-motion: reduce) {
+    .potret,
+    .nama,
+    .jabatan,
+    .scroll-hint {
+      transform: none !important;
+      opacity: 1 !important;
+      transition: none !important;
+      will-change: auto !important;
+    }
+
+    .hint-arrow {
+      animation: none !important;
+    }
+
+    .progress-fill {
+      transition: none !important;
+    }
+  }
+</style>
