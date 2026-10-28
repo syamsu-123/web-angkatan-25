@@ -15,18 +15,62 @@ const { title = 'SMK Al-Ittihad', description = 'Web angkatan SMK Al-Ittihad, Ka
     <link href="https://fonts.googleapis.com/css2?family=Italiana&family=Cormorant+Garamond:wght@400;600&family=Open+Sans:wght@400;700&display=swap" rel="stylesheet" />
     <style is:global>
       /* Efek halaman seperti kertas ketarik saat scroll */
-      .page{transform-origin:50% 50%;will-change:transform;position:relative;z-index:1}
-      .page.pull{box-shadow:0 24px 60px rgba(0,0,0,.35)}
-      .page::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .35s ease;
+      .page {
+        --pull-opacity: 0;
+        transform-origin: 50% 50%;
+        will-change: transform;
+        position: relative;
+        z-index: 30;
+        backface-visibility: hidden;
+        transition: box-shadow 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .page.pull {
+        box-shadow: 0 28px 70px rgba(0, 0, 0, 0.38);
+      }
+      .page::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: var(--pull-opacity, 0);
+        transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
         background:
-          linear-gradient(180deg,rgba(0,0,0,.28),transparent 9%) top/100% 100% no-repeat,
-          linear-gradient(0deg,rgba(0,0,0,.28),transparent 9%) bottom/100% 100% no-repeat}
-      .page.pull::after{opacity:1}
-      .crease{position:fixed;left:0;right:0;height:0;pointer-events:none;z-index:55;opacity:0;
-        border-top:1px dashed rgba(255,255,255,.5);
-        filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));transition:opacity .3s ease}
-      .crease.show{opacity:.8}
-      @media (prefers-reduced-motion:reduce){.page,.page::after,.crease{transform:none!important;opacity:1;transition:none}}
+          linear-gradient(180deg, rgba(0, 0, 0, 0.3), rgba(255, 255, 255, 0.04) 4%, transparent 10%) top / 100% 100% no-repeat,
+          linear-gradient(0deg, rgba(0, 0, 0, 0.3), rgba(255, 255, 255, 0.04) 4%, transparent 10%) bottom / 100% 100% no-repeat;
+      }
+      .page.pull::after {
+        opacity: var(--pull-opacity, 1);
+      }
+      .crease {
+        position: fixed;
+        left: 0;
+        right: 0;
+        height: 18px;
+        pointer-events: none;
+        z-index: 55;
+        opacity: 0;
+        transform: translate3d(0, -50%, 0);
+        will-change: transform, opacity, top;
+        border-top: 1px dashed rgba(255, 255, 255, 0.55);
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.14) 0%,
+          rgba(0, 0, 0, 0.18) 35%,
+          transparent 100%
+        );
+        filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35));
+        transition: opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .crease.show {
+        opacity: var(--crease-opacity, 0.85);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .page, .page::after, .crease {
+          transform: none !important;
+          opacity: 1;
+          transition: none;
+        }
+      }
     </style>
   </head>
   <body>
@@ -35,49 +79,124 @@ const { title = 'SMK Al-Ittihad', description = 'Web angkatan SMK Al-Ittihad, Ka
       <slot />
     </main>
     <PaperPlaneAnimation client:load />
-    <script>
+    <script is:inline>
+      // Berikan stagger delay otomatis untuk elemen .reveal yang bersaudara di tiap section
+      document.querySelectorAll('section').forEach((section) => {
+        const reveals = section.querySelectorAll('.reveal');
+        reveals.forEach((el, idx) => {
+          if (!el.style.getPropertyValue('--reveal-delay')) {
+            el.style.setProperty('--reveal-delay', `${idx * 130}ms`);
+          }
+        });
+      });
+
       // Animasi fade-in saat section masuk layar
-      const io = new IntersectionObserver((es) => es.forEach((e) => {
-        if (e.isIntersecting) { e.target.classList.add('show'); io.unobserve(e.target); }
-      }), { threshold: 0.15 });
-      document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('active');
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.14, rootMargin: '0px 0px -4% 0px' });
 
-      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // Hanya jalankan animasi jika user tidak prefer reduced motion
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-      // Efek halaman ketarik seperti kertas saat scroll
-      const page = document.querySelector('.page') as HTMLElement | null;
-      const crease = document.querySelector('.crease') as HTMLElement | null;
-      if (page && crease && !reduce) {
-        let lastY = window.scrollY, vel = 0, smooth = 0, rafP = 0;
-        const loop = () => {
-          smooth += (vel - smooth) * 0.15;
-          const s = Math.max(-1, Math.min(1, smooth / 40));
-          const stretch = Math.abs(s) * 0.06;
-          const skew = s * 1.6;
-          page.style.transform = `scaleY(${1 + stretch}) translateY(${s * -8}px) skewY(${skew * 0.4}deg)`;
-          if (Math.abs(s) > 0.06) {
+      if (!reduceMotion) {
+        document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+      } else {
+        // Nonaktifkan semua animasi reveal
+        document.querySelectorAll('.reveal').forEach((el) => {
+          el.classList.add('active');
+        });
+      }
+
+      // Efek halaman ketarik seperti kertas saat scroll dengan spring physics halus (frame-rate independent)
+      const page = document.querySelector('.page');
+      const crease = document.querySelector('.crease');
+
+      if (page && crease && !reduceMotion) {
+        let lastY = window.scrollY;
+        let targetVel = 0;
+        let smoothVel = 0;
+        let displayVel = 0;
+        let creasePos = 50;
+        let rafP = 0;
+        let lastTime = performance.now();
+
+        const loop = (now) => {
+          const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
+          lastTime = now;
+
+          // Spring-damping halus berbasis waktu (frame-rate independent)
+          const followRate = 1 - Math.exp(-14 * dt);
+          const displayRate = 1 - Math.exp(-10 * dt);
+          const decayRate = Math.exp(-9.5 * dt);
+
+          smoothVel += (targetVel - smoothVel) * followRate;
+          displayVel += (smoothVel - displayVel) * displayRate;
+          targetVel *= decayRate;
+
+          const s = Math.max(-1, Math.min(1, displayVel / 52));
+          const absS = Math.abs(s);
+
+          // Kurva non-linear lembut agar tarikan terasa organik seperti kertas asli
+          const easedS = Math.sign(s) * Math.pow(absS, 0.85);
+          const stretch = Math.abs(easedS) * 0.042;
+          const translateY = easedS * -7.5;
+          const skew = easedS * 0.48;
+
+          // Transform origin bergeser halus mengikuti arah tarikan
+          const originY = 50 - easedS * 18;
+          page.style.transformOrigin = `50% ${originY.toFixed(2)}%`;
+          page.style.transform = `translate3d(0, ${translateY.toFixed(3)}px, 0) scaleY(${(1 + stretch).toFixed(5)}) skewY(${skew.toFixed(3)}deg)`;
+
+          // Posisi garis lipatan kertas (crease) bergerak mulus tanpa melompat
+          const targetCrease = s >= 0 ? 10 + absS * 4 : 88 - absS * 4;
+          creasePos += (targetCrease - creasePos) * (1 - Math.exp(-12 * dt));
+          crease.style.top = `${creasePos.toFixed(2)}vh`;
+
+          const pullStrength = Math.min(1, absS * 2.2);
+          page.style.setProperty('--pull-opacity', pullStrength.toFixed(3));
+          crease.style.setProperty('--crease-opacity', (pullStrength * 0.88).toFixed(3));
+
+          if (absS > 0.035) {
             page.classList.add('pull');
             crease.classList.add('show');
-            crease.style.top = s > 0 ? '8vh' : '88vh';
           } else {
             page.classList.remove('pull');
             crease.classList.remove('show');
           }
-          vel *= 0.88;
-          if (Math.abs(vel) > 0.4 || Math.abs(smooth) > 0.4) { rafP = requestAnimationFrame(loop); }
-          else {
-            smooth = 0; vel = 0; rafP = 0;
+
+          if (Math.abs(targetVel) > 0.02 || Math.abs(smoothVel) > 0.02 || Math.abs(displayVel) > 0.02) {
+            rafP = requestAnimationFrame(loop);
+          } else {
+            targetVel = 0;
+            smoothVel = 0;
+            displayVel = 0;
+            rafP = 0;
             page.style.transform = '';
+            page.style.transformOrigin = '50% 50%';
+            page.style.setProperty('--pull-opacity', '0');
+            crease.style.setProperty('--crease-opacity', '0');
             page.classList.remove('pull');
             crease.classList.remove('show');
           }
         };
+
         const onScroll = () => {
           const y = window.scrollY;
-          vel += (y - lastY);
+          const delta = y - lastY;
           lastY = y;
-          if (!rafP) rafP = requestAnimationFrame(loop);
+          // Batasi lonjakan ekstrim agar tetap mulus di mouse wheel maupun touchpad
+          targetVel = Math.max(-140, Math.min(140, targetVel + delta * 0.85));
+          if (!rafP) {
+            lastTime = performance.now();
+            rafP = requestAnimationFrame(loop);
+          }
         };
+
         window.addEventListener('scroll', onScroll, { passive: true });
       }
     </script>
